@@ -1,0 +1,26 @@
+CREATE TABLE IF NOT EXISTS admins (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  first_name TEXT,
+  last_name TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create an index for faster lookups
+CREATE INDEX IF NOT EXISTS admins_email_idx ON admins(email);
+
+-- Grant permissions
+GRANT ALL ON admins TO authenticated, anon;
+
+-- Create function to check if a user is an admin
+CREATE OR REPLACE FUNCTION is_admin(p_email TEXT) 
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_exists BOOLEAN;
+BEGIN
+  SELECT EXISTS(SELECT 1 FROM admins WHERE email = p_email) INTO v_exists;
+  RETURN v_exists;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER; 
