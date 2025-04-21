@@ -8,6 +8,7 @@ import Image from 'next/image';
 export default function PrivateEventPage() {
   const router = useRouter();
   const [eventName, setEventName] = useState('');
+  const [organizer, setOrganizer] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [eventStartDate, setEventStartDate] = useState('');
@@ -39,6 +40,7 @@ export default function PrivateEventPage() {
             
             // Set form values from stored data
             setEventName(eventData.eventName || '');
+            setOrganizer(eventData.organizer || '');
             setDescription(eventData.description || '');
             setCategory(eventData.category || '');
             setEventStartDate(eventData.eventStartDate || '');
@@ -242,6 +244,22 @@ export default function PrivateEventPage() {
                       value={eventName}
                       onChange={(e) => setEventName(e.target.value)}
                       placeholder="Rock Revolt: A Fusion of Power and Passion"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="organizer" className="block text-sm font-medium text-slate-700 mb-1">
+                      Organizer <span className="text-red-500">*</span>
+                    </label>
+                    <p className="text-xs text-slate-500 mb-1">Who is organizing this event?</p>
+                    <input
+                      type="text"
+                      id="organizer"
+                      value={organizer}
+                      onChange={(e) => setOrganizer(e.target.value)}
+                      placeholder="Company, Organization or Individual Name"
                       className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
                       required
                     />
@@ -492,6 +510,7 @@ export default function PrivateEventPage() {
                             // Create an event data object with all input values
                             const eventData = {
                               eventName,
+                              organizer,
                               description,
                               category,
                               eventStartDate,
@@ -505,7 +524,6 @@ export default function PrivateEventPage() {
                               isPaid,
                               quantity,
                               price: isPaid ? price : '0',
-                              // Use the newly converted image or keep the existing one
                               coverImageUrl: coverImageBase64 || coverImageUrl || ''
                             };
                             

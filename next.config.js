@@ -10,6 +10,7 @@ const nextConfig = {
       'placehold.co',
       'images.unsplash.com',
       'randomuser.me',
+      'img.freepik.com',
     ],
   },
   eslint: {

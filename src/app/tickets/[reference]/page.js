@@ -47,6 +47,143 @@ function ClientQRCode({ value }) {
   );
 }
 
+// Download QR Code component
+function DownloadQRCode({ ticket }) {
+  const [downloading, setDownloading] = useState(false);
+  const [downloadFormat, setDownloadFormat] = useState('png'); // Default format
+
+  const handleDownload = async () => {
+    try {
+      setDownloading(true);
+      console.log('Using QR code download mode');
+
+      // Get just the QR code element
+      const qrCodeElement = document.querySelector('.bg-white.p-2.rounded-lg.inline-block.mb-3');
+      
+      if (!qrCodeElement) {
+        throw new Error('QR code element not found');
+      }
+
+      // Create a canvas element to render just the QR code
+      const html2canvas = (await import('html2canvas')).default;
+      
+      const canvas = await html2canvas(qrCodeElement, {
+        scale: 2,
+        logging: false,
+        backgroundColor: '#ffffff',
+        useCORS: true
+      });
+      
+      // Convert canvas to a data URL
+      const mimeType = downloadFormat === 'png' ? 'image/png' : 'image/jpeg';
+      const imageData = canvas.toDataURL(mimeType, 1.0);
+      
+      // Save the image
+      const fileExt = downloadFormat === 'png' ? 'png' : 'jpg';
+      const link = document.createElement('a');
+      link.href = imageData;
+      link.download = `ticket-qr-${ticket.reference || ticket.ticket_code}.${fileExt}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+    } catch (error) {
+      console.error('Error downloading QR code:', error);
+      alert('Could not download QR code. Please take a screenshot instead.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col">
+      <div className="flex mb-2 gap-2 justify-center">
+        <button
+          type="button"
+          onClick={() => setDownloadFormat('png')}
+          className={`px-3 py-1 text-xs rounded ${downloadFormat === 'png' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}
+        >
+          PNG
+        </button>
+        <button
+          type="button"
+          onClick={() => setDownloadFormat('jpeg')}
+          className={`px-3 py-1 text-xs rounded ${downloadFormat === 'jpeg' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}
+        >
+          JPEG
+        </button>
+      </div>
+      
+      <button
+        type="button"
+        onClick={handleDownload}
+        disabled={downloading}
+        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
+      >
+        {downloading ? (
+          <>
+            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Downloading...
+          </>
+        ) : (
+          <>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Download QR Code
+          </>
+        )}
+      </button>
+      
+      <p className="text-xs text-gray-500 mt-1 text-center">
+        The QR code contains all your ticket information.
+      </p>
+    </div>
+  );
+}
+
+// Print ticket component
+function PrintTicket() {
+  const [isPrinting, setIsPrinting] = useState(false);
+  
+  const handlePrint = () => {
+    setIsPrinting(true);
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => setIsPrinting(false), 1000);
+    }, 300);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handlePrint}
+      disabled={isPrinting}
+      className="w-full mt-3 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center"
+    >
+      {isPrinting ? (
+        <>
+          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Preparing to print...
+        </>
+      ) : (
+        <>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+          </svg>
+          Print Ticket
+        </>
+      )}
+    </button>
+  );
+}
+
 export default function TicketPage() {
   const router = useRouter();
   const params = useParams();
@@ -70,6 +207,38 @@ export default function TicketPage() {
       return 'Invalid date';
     }
   };
+
+  // Add CSS styles for print media
+  useEffect(() => {
+    // Add print styles
+    const style = document.createElement('style');
+    style.innerHTML = `
+      @media print {
+        body * {
+          visibility: hidden;
+        }
+        #printable-ticket, #printable-ticket * {
+          visibility: visible;
+        }
+        #printable-ticket {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          border: none !important;
+          box-shadow: none !important;
+        }
+        .no-print {
+          display: none !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
 
   useEffect(() => {
     async function fetchTicketData() {
@@ -599,7 +768,7 @@ VERIFICATION: ${ticket.id ? ticket.id.substring(0, 6).toUpperCase() : reference.
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-md mx-auto">
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div id="printable-ticket" className="bg-white rounded-lg shadow-lg overflow-hidden">
           {/* Ticket Header */}
           <div className="bg-blue-600 text-white p-6 text-center">
             <h1 className="text-2xl font-bold">Event Ticket</h1>
@@ -666,8 +835,14 @@ VERIFICATION: ${ticket.id ? ticket.id.substring(0, 6).toUpperCase() : reference.
               For support: support@eventips.com
             </p>
             
+            {/* Download and Print Buttons */}
+            <div className="mb-6 no-print">
+              <DownloadQRCode ticket={ticket} />
+              <PrintTicket />
+            </div>
+            
             {/* Back Button */}
-            <div className="text-center">
+            <div className="text-center no-print">
               <Link 
                 href="/my-tickets"
                 className="inline-block px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"

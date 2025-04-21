@@ -202,7 +202,7 @@ export default function Footer() {
               <option>Spanish</option>
             </select>
             <div className="text-gray-400 text-sm">
-              © {new Date().getFullYear()} Eventip. All rights reserved.
+              © {new Date().getFullYear()} Event IP. All rights reserved.
             </div>
           </div>
           <div className="flex flex-wrap gap-6 text-sm text-gray-400">

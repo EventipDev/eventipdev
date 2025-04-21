@@ -27,7 +27,7 @@ export default function HelpCenter() {
       },
       {
         question: "How do I contact customer support?",
-        answer: "You can contact our customer support team through the 'Contact Us' page, by emailing support@eventip.com, or by using the live chat feature available on the bottom right of every page when you're logged in."
+        answer: "You can contact our customer support team through the 'Contact Us' page, by emailing support@eventip.net, or by using the live chat feature available on the bottom right of every page when you're logged in."
       },
       {
         question: "Is Event IP available in my country?",
@@ -156,7 +156,7 @@ export default function HelpCenter() {
       icon: "📧",
       title: "Email Support",
       description: "Email us with your questions or concerns",
-      link: "mailto:support@eventip.com",
+      link: "mailto:support@eventip.net",
       linkText: "Email Us"
     }
   ];
@@ -288,12 +288,24 @@ export default function HelpCenter() {
                 <p className="text-amber-100 mb-6 max-w-xl">
                   Connect with other users, share experiences, and get community support from fellow event enthusiasts and organizers.
                 </p>
-                <a 
-                  href="#" 
-                  className="inline-block bg-white text-amber-600 px-6 py-3 rounded-lg font-medium hover:bg-amber-50 transition-colors shadow-md"
-                >
-                  Join Community Forum
-                </a>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <a 
+                    href="https://t.me/event_ip_official" 
+                    className="inline-block bg-white text-amber-600 px-6 py-3 rounded-lg font-medium hover:bg-amber-50 transition-colors shadow-md"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Join Telegram Channel
+                  </a>
+                  <a 
+                    href="https://discord.gg/XWFv4G4Y" 
+                    className="inline-block bg-white text-amber-600 px-6 py-3 rounded-lg font-medium hover:bg-amber-50 transition-colors shadow-md"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Join Discord Server
+                  </a>
+                </div>
               </div>
               <div className="w-full md:w-1/3 max-w-xs">
                 <div className="relative aspect-square">

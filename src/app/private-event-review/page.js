@@ -105,6 +105,7 @@ export default function PrivateEventReviewPage() {
       const privateEventData = {
         user_id: user.id,
         event_name: eventData.eventName,
+        organizer: eventData.organizer,
         description: eventData.description,
         event_start_date: eventData.eventStartDate,
         event_end_date: eventData.eventEndDate || eventData.eventStartDate, // Use start date as fallback
@@ -405,6 +406,11 @@ export default function PrivateEventReviewPage() {
                     <div>
                       <p className="text-sm text-slate-500">Event Title</p>
                       <p className="font-medium text-slate-800">{eventData.eventName || 'Not specified'}</p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-sm text-slate-500">Organizer</p>
+                      <p className="font-medium text-slate-800">{eventData.organizer || 'Not specified'}</p>
                     </div>
                   </div>
                   

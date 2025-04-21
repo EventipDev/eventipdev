@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import TicketModal from '../components/TicketModal';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
   const [featuredEvents, setFeaturedEvents] = useState([]);
@@ -18,6 +19,8 @@ export default function Home() {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     fetchEvents();
@@ -210,6 +213,16 @@ export default function Home() {
     
     console.log('Get Tickets clicked for event:', event.title);
     
+    // Check if user is logged in by looking for user data in localStorage
+    const isLoggedIn = typeof window !== 'undefined' && localStorage.getItem('user');
+    
+    if (!isLoggedIn) {
+      // Show login prompt if user is not logged in
+      setSelectedEvent(event);
+      setShowLoginPrompt(true);
+      return;
+    }
+    
     // Format the event data specifically for the TicketModal component
     const formattedEvent = {
       ...event,
@@ -244,6 +257,18 @@ export default function Home() {
   // Function to close the ticket modal
   const closeTicketModal = () => {
     setShowTicketModal(false);
+  };
+
+  // Function to direct users to login page
+  const handleLoginRedirect = () => {
+    // Store the current URL in localStorage to redirect back after login
+    localStorage.setItem('loginRedirectURL', window.location.href);
+    router.push('/signin');
+  };
+
+  // Function to close the login prompt
+  const closeLoginPrompt = () => {
+    setShowLoginPrompt(false);
   };
 
   // If error or no events found, display a message
@@ -755,6 +780,49 @@ export default function Home() {
         />
       )}
 
+      {/* Login Prompt Modal */}
+      {showLoginPrompt && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            {/* Modal backdrop */}
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-gray-800 opacity-80"></div>
+            </div>
+            
+            {/* Modal content */}
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+              <div className="bg-white px-6 py-6">
+                <div className="text-center mb-4">
+                  <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-amber-100 mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Login Required</h3>
+                  <p className="text-gray-600 mb-6">
+                    You need to be logged in to purchase tickets for this event. Would you like to login now?
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 sm:justify-center">
+                  <button
+                    onClick={closeLoginPrompt}
+                    className="w-full sm:w-auto order-2 sm:order-1 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleLoginRedirect}
+                    className="w-full sm:w-auto order-1 sm:order-2 px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700"
+                  >
+                    Login Now
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Footer />
     </div>
   );
@@ -763,6 +831,8 @@ export default function Home() {
 // Featured Event Card Component
 function FeaturedEventCard({ id, title, image, date, location, price, category = "Featured", attendees = "100+ attending", ticketCount, hasDiscounts, discountAmount, onClick, onGetTickets }) {
   const isSoldOut = ticketCount === 'No available ticket for this event';
+  // Check if user is logged in
+  const isLoggedIn = typeof window !== 'undefined' && localStorage.getItem('user');
   
   return (
     <div onClick={onClick} className="group bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer">
@@ -831,11 +901,17 @@ function FeaturedEventCard({ id, title, image, date, location, price, category =
                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
                 : 'bg-black text-white hover:bg-gray-800'
             }`}
+            title={isLoggedIn ? "Get tickets" : "Login required to get tickets"}
           >
-            {isSoldOut ? 'Sold Out' : 'Get Tickets'}
-            {!isSoldOut && (
+            {isSoldOut ? 'Sold Out' : isLoggedIn ? 'Get Tickets' : 'Login to Buy'}
+            {!isSoldOut && isLoggedIn && (
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1.5 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            )}
+            {!isSoldOut && !isLoggedIn && (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1.5 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
               </svg>
             )}
           </button>
@@ -848,6 +924,8 @@ function FeaturedEventCard({ id, title, image, date, location, price, category =
 // Trending Event Card Component
 function TrendingEventCard({ id, title, image, date, location, price, category = "Trending", rating = 4.5, reviews = 27, ticketCount, hasDiscounts, discountAmount, onClick, onGetTickets }) {
   const isSoldOut = ticketCount === 'No available ticket for this event';
+  // Check if user is logged in
+  const isLoggedIn = typeof window !== 'undefined' && localStorage.getItem('user');
   
   return (
     <div onClick={onClick} className="group flex flex-col md:flex-row bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer">
@@ -917,16 +995,22 @@ function TrendingEventCard({ id, title, image, date, location, price, category =
           <button 
             onClick={onGetTickets}
             disabled={isSoldOut}
-            className={`px-5 py-2 text-sm font-medium transition-colors ${
+            className={`px-5 py-2 text-sm font-medium transition-colors flex items-center ${
               isSoldOut 
                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
                 : 'bg-black text-white hover:bg-gray-800'
             }`}
+            title={isLoggedIn ? "Get tickets" : "Login required to get tickets"}
           >
-            {isSoldOut ? 'Sold Out' : 'Get Tickets'}
-            {!isSoldOut && (
+            {isSoldOut ? 'Sold Out' : isLoggedIn ? 'Get Tickets' : 'Login to Buy'}
+            {!isSoldOut && isLoggedIn && (
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1.5 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            )}
+            {!isSoldOut && !isLoggedIn && (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1.5 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
               </svg>
             )}
           </button>
@@ -938,6 +1022,9 @@ function TrendingEventCard({ id, title, image, date, location, price, category =
 
 // Event Card Component
 function EventCard({ event, onClick, onGetTickets }) {
+  // Check if user is logged in
+  const isLoggedIn = typeof window !== 'undefined' && localStorage.getItem('user');
+  
   // Check if discounts are available
   const hasDiscounts = event.has_early_bird || event.has_multiple_buys;
   const discountAmount = Math.max(event.early_bird_discount || 0, event.multiple_buys_discount || 0);
@@ -1049,8 +1136,9 @@ function EventCard({ event, onClick, onGetTickets }) {
               ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
               : 'bg-black text-white hover:bg-gray-800'
           }`}
+          title={isLoggedIn ? "Get tickets" : "Login required to get tickets"}
         >
-          {event.isSoldOut ? 'Sold Out' : 'Get Tickets'}
+          {event.isSoldOut ? 'Sold Out' : isLoggedIn ? 'Get Tickets' : 'Login to Buy'}
         </button>
       </div>
       
@@ -1084,8 +1172,9 @@ function EventCard({ event, onClick, onGetTickets }) {
                           ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                           : 'bg-black text-white hover:bg-gray-800'
                       }`}
+                      title={isLoggedIn ? "Get tickets" : "Login required to get tickets"}
                     >
-                      {tierAvailable <= 0 ? 'Sold Out' : 'Get Tickets'}
+                      {tierAvailable <= 0 ? 'Sold Out' : isLoggedIn ? 'Get' : 'Login'}
                     </button>
                   </div>
                 </div>

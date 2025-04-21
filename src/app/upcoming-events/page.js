@@ -9,6 +9,7 @@ import Footer from '../components/Footer';
 import { supabase } from '../../lib/supabaseClient';
 import TicketModal from '../../components/TicketModal';
 import EventPreviewModal from '../../components/EventPreviewModal';
+import { useRouter } from 'next/navigation';
 
 export default function UpcomingEvents() {
   const [filter, setFilter] = useState('all');
@@ -19,6 +20,8 @@ export default function UpcomingEvents() {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const router = useRouter();
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -246,10 +249,32 @@ export default function UpcomingEvents() {
 
   // Handle "Get Tickets" button click
   const handleGetTickets = (event) => {
+    // Check if user is logged in by looking for user data in localStorage
+    const isLoggedIn = typeof window !== 'undefined' && localStorage.getItem('user');
+    
+    if (!isLoggedIn) {
+      // Show login prompt if user is not logged in
+      setSelectedEvent(event);
+      setShowLoginPrompt(true);
+      return;
+    }
+    
     // Set the selected event and show the ticket modal
     setSelectedEvent(event);
     closeModal(); // Close the preview modal if it's open
     setShowTicketModal(true);
+  };
+
+  // Function to direct users to login page
+  const handleLoginRedirect = () => {
+    // Store the current URL in localStorage to redirect back after login
+    localStorage.setItem('loginRedirectURL', window.location.href);
+    router.push('/signin');
+  };
+
+  // Function to close the login prompt
+  const closeLoginPrompt = () => {
+    setShowLoginPrompt(false);
   };
 
   // Close the ticket modal
@@ -711,6 +736,49 @@ export default function UpcomingEvents() {
         onClose={closeTicketModal}
       />
       )}
+      
+      {/* Login Prompt Modal */}
+      {showLoginPrompt && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            {/* Modal backdrop */}
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-gray-800 opacity-80"></div>
+            </div>
+            
+            {/* Modal content */}
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+              <div className="bg-white px-6 py-6">
+                <div className="text-center mb-4">
+                  <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-amber-100 mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Login Required</h3>
+                  <p className="text-gray-600 mb-6">
+                    You need to be logged in to purchase tickets for this event. Would you like to login now?
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 sm:justify-center">
+                  <button
+                    onClick={closeLoginPrompt}
+                    className="w-full sm:w-auto order-2 sm:order-1 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleLoginRedirect}
+                    className="w-full sm:w-auto order-1 sm:order-2 px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700"
+                  >
+                    Login Now
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -736,6 +804,8 @@ function EventCard({ event, onClick, onGetTickets }) {
   // Check if discounts are available
   const hasDiscounts = event.has_early_bird || event.has_multiple_buys;
   const discountAmount = Math.max(event.early_bird_discount || 0, event.multiple_buys_discount || 0);
+  // Check if user is logged in
+  const isLoggedIn = typeof window !== 'undefined' && localStorage.getItem('user');
   
   return (
     <div className="relative flex flex-col overflow-hidden bg-white rounded-2xl shadow-sm hover:shadow-lg transition-shadow border border-slate-200">
@@ -823,9 +893,10 @@ function EventCard({ event, onClick, onGetTickets }) {
               e.stopPropagation();
               onGetTickets(event);
             }}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors"
+            className={`px-4 py-2 ${isLoggedIn ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-600 hover:bg-gray-700'} text-white font-medium rounded-lg transition-colors`}
+            title={isLoggedIn ? "Get tickets" : "Login required to get tickets"}
           >
-            Get Tickets
+            {isLoggedIn ? 'Get Tickets' : 'Login to Buy'}
           </button>
         )}
       </div>

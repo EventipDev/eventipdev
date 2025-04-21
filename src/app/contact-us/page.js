@@ -91,7 +91,7 @@ export default function ContactUs() {
       console.error('Exception when submitting contact form:', error);
       setSubmitStatus({ 
         success: false, 
-        message: 'There was an error sending your message. Please try again or contact us directly at support@eventip.com.' 
+        message: 'There was an error sending your message. Please try again or contact us directly at support@eventip.net.' 
       });
     } finally {
       setIsSubmitting(false);

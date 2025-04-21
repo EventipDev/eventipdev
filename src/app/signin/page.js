@@ -68,11 +68,21 @@ export default function SignIn() {
         localStorage.setItem('remember_me', 'true');
       }
       
-      console.log('Sign-in successful, redirecting to dashboard...');
+      console.log('Sign-in successful, redirecting...');
+      
+      // Check if there's a redirect URL stored (from ticket purchase flow)
+      const redirectURL = localStorage.getItem('loginRedirectURL');
       
       // Use a slight delay to ensure localStorage is set before redirect
       setTimeout(() => {
-        router.push('/dashboard');
+        if (redirectURL) {
+          // Clear the stored URL first
+          localStorage.removeItem('loginRedirectURL');
+          router.push(redirectURL);
+        } else {
+          // Default redirect to dashboard
+          router.push('/dashboard');
+        }
       }, 100);
     } catch (error) {
       console.error('Sign-in error:', error);
@@ -84,45 +94,43 @@ export default function SignIn() {
 
   const handleGoogleSignIn = async () => {
     try {
-      setError(null);
       setLoading(true);
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      
+      // Redirect to Google OAuth
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/signin`
+          redirectTo: `${window.location.origin}/auth/callback`
         }
       });
-
-      if (error) {
-        throw error;
-      }
-
+      
+      if (error) throw error;
+      
     } catch (error) {
       console.error('Google sign-in error:', error);
       setError('Failed to sign in with Google. Please try again.');
-    } finally {
       setLoading(false);
     }
   };
 
-  // Check for OAuth callback on component mount
+  // Check for OAuth sessions on load
   useEffect(() => {
     const checkOAuthSession = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        setLoading(true);
+        const { data, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('Error getting session:', error);
-          setError('Error checking authentication session. Please try again.');
+          console.error('OAuth session error:', error);
           return;
         }
         
-        if (!session || !session.user) {
+        if (!data || !data.session) {
+          console.log('No OAuth session found');
           return;
         }
         
-        const user = session.user;
+        const user = data.session.user;
         
         // Only handle Google OAuth users
         if (user.app_metadata?.provider === 'google') {
@@ -159,9 +167,19 @@ export default function SignIn() {
             localStorage.setItem('user', JSON.stringify(sessionUser));
             console.log('Google sign-in successful, redirecting...');
             
+            // Check if there's a redirect URL stored (from ticket purchase flow)
+            const redirectURL = localStorage.getItem('loginRedirectURL');
+            
             // Use a slight delay to ensure localStorage is set before redirect
             setTimeout(() => {
-              router.push('/dashboard');
+              if (redirectURL) {
+                // Clear the stored URL first
+                localStorage.removeItem('loginRedirectURL');
+                router.push(redirectURL);
+              } else {
+                // Default redirect to dashboard
+                router.push('/dashboard');
+              }
             }, 100);
           } catch (err) {
             console.error('Error processing OAuth user:', err);

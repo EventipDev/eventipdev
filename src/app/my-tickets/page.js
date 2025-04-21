@@ -31,6 +31,7 @@ export default function MyTickets() {
         if (storedUserStr) {
           const storedUser = JSON.parse(storedUserStr);
           setUser(storedUser);
+          setEmail(storedUser.email || ''); // Set the email from the user object
           setIsLoading(false);
           return;
         }
@@ -45,6 +46,7 @@ export default function MyTickets() {
         
         if (data && data.length > 0) {
           setUser(data[0]);
+          setEmail(data[0].email || ''); // Set the email from the user object
           // Store user in localStorage for future access
           localStorage.setItem('user', JSON.stringify(data[0]));
         } else {
@@ -62,29 +64,19 @@ export default function MyTickets() {
     checkUser();
   }, [router]);
 
-  // If still loading auth state or not authenticated, show loading or redirect
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-600"></div>
-      </div>
-    );
-  }
-  
-  if (!user) {
-    // This shouldn't be visible as the useEffect will redirect,
-    // but just in case there's a delay in the redirect
-    return null;
-  }
-  
-  // Function to handle ticket search by email
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    
-    if (!email.trim()) {
-      setError('Please enter an email address to search');
-      return;
+  // Fetch tickets automatically when the component loads and user is authenticated
+  useEffect(() => {
+    if (user && user.email) {
+      // Set the email field with the current user's email
+      setEmail(user.email);
+      // Fetch tickets for the user automatically
+      fetchUserTickets(user.email);
     }
+  }, [user]);
+
+  // Function to fetch user tickets
+  const fetchUserTickets = async (userEmail) => {
+    if (!userEmail) return;
     
     try {
       setError(null);
@@ -94,80 +86,124 @@ export default function MyTickets() {
       setLoading(true);
       setSearched(true);
       
-      // Simulate processing time
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Fetch tickets from the main tickets table
-      console.log('Fetching tickets from general tickets table for email:', email);
+      // Fetch paid tickets from the tickets table
+      console.log('Fetching paid tickets for user:', userEmail);
       try {
-        const ticketsResponse = await fetch(`/api/tickets?email=${encodeURIComponent(email)}`);
-        
-        if (ticketsResponse.ok) {
-          const ticketsResult = await ticketsResponse.json();
-          
-          if (ticketsResult.success) {
-            console.log(`General tickets fetched: ${ticketsResult.data.length} tickets found`);
-            setAllTickets(ticketsResult.data || []);
-          } else {
-            console.warn('Tickets API returned success: false -', ticketsResult.message);
-          }
+        const { data: paidTicketsData, error: paidError } = await supabase
+          .from('tickets')
+          .select(`
+            id,
+            event_id,
+            ticket_tier_id,
+            user_id,
+            customer_email,
+            price_paid,
+            ticket_code,
+            ticket_type,
+            reference,
+            transaction_id,
+            status,
+            is_used,
+            checked_in_at,
+            checked_in_by,
+            purchase_date,
+            created_at,
+            updated_at,
+            events (
+              name,
+              event_date,
+              start_time,
+              city,
+              state,
+              address
+            )
+          `)
+          .eq('customer_email', userEmail)
+          .order('purchase_date', { ascending: false });
+
+        if (paidError) {
+          console.error('Error fetching paid tickets:', paidError);
         } else {
-          console.warn(`General tickets API returned ${ticketsResponse.status}: ${ticketsResponse.statusText}`);
-          // Don't throw error, continue with other API calls
+          console.log(`Paid tickets fetched: ${paidTicketsData.length} tickets found`);
+          
+          // Process the paid tickets data to include event details
+          const processedPaidTickets = paidTicketsData.map(ticket => ({
+            ...ticket,
+            event_title: ticket.events?.name || 'Unknown Event',
+            event_date: ticket.events?.event_date || null,
+            event_time: ticket.events?.start_time || null,
+            event_location: ticket.events?.address ? 
+              `${ticket.events.address}, ${ticket.events.city || ''}${ticket.events.state ? `, ${ticket.events.state}` : ''}` : 
+              `${ticket.events?.city || ''}${ticket.events?.state ? `, ${ticket.events.state}` : ''}`
+          }));
+          
+          setPaidTickets(processedPaidTickets);
+          // Also add to all tickets for the combined view
+          setAllTickets(prev => [...prev, ...processedPaidTickets]);
         }
-      } catch (ticketsError) {
-        console.warn('Error fetching from general tickets API:', ticketsError);
-        // Continue with other API calls, don't abort the entire process
+      } catch (error) {
+        console.error('Error in paid tickets query:', error);
       }
       
-      // Fetch paid tickets
-      console.log('Fetching paid tickets for email:', email);
+      // Fetch free tickets from the free_tickets table
+      console.log('Fetching free tickets for user:', userEmail);
       try {
-        const paidResponse = await fetch(`/api/tickets?email=${encodeURIComponent(email)}`);
-        
-        if (paidResponse.ok) {
-          const paidResult = await paidResponse.json();
-          
-          if (paidResult.success) {
-            console.log(`Paid tickets fetched: ${paidResult.data.length} tickets found`);
-            setPaidTickets(paidResult.data || []);
-          } else {
-            console.warn('Paid tickets API returned success: false -', paidResult.message);
-          }
+        const { data: freeTicketsData, error: freeError } = await supabase
+          .from('free_tickets')
+          .select(`
+            id,
+            user_id,
+            event_id,
+            reference,
+            customer_email,
+            customer_name,
+            customer_phone,
+            event_title,
+            event_date,
+            event_time,
+            event_location,
+            ticket_type,
+            price_paid,
+            status,
+            is_used,
+            purchase_date,
+            created_at,
+            updated_at
+          `)
+          .eq('customer_email', userEmail)
+          .order('purchase_date', { ascending: false });
+
+        if (freeError) {
+          console.error('Error fetching free tickets:', freeError);
         } else {
-          console.warn(`Paid tickets API returned ${paidResponse.status}: ${paidResponse.statusText}`);
+          console.log(`Free tickets fetched: ${freeTicketsData.length} tickets found`);
+          setFreeTickets(freeTicketsData);
+          // Also add to all tickets for the combined view
+          setAllTickets(prev => [...prev, ...freeTicketsData]);
         }
-      } catch (paidError) {
-        console.warn('Error fetching from paid tickets API:', paidError);
-      }
-      
-      // Fetch free tickets
-      console.log('Fetching free tickets for email:', email);
-      try {
-        const freeResponse = await fetch(`/api/free-tickets?email=${encodeURIComponent(email)}`);
-        
-        if (freeResponse.ok) {
-          const freeResult = await freeResponse.json();
-          
-          if (freeResult.success) {
-            console.log(`Free tickets fetched: ${freeResult.data.length} tickets found`);
-            setFreeTickets(freeResult.data || []);
-          } else {
-            console.warn('Free tickets API returned success: false -', freeResult.message);
-          }
-        } else {
-          console.warn(`Free tickets API returned ${freeResponse.status}: ${freeResponse.statusText}`);
-        }
-      } catch (freeError) {
-        console.warn('Error fetching from free tickets API:', freeError);
+      } catch (error) {
+        console.error('Error in free tickets query:', error);
       }
       
     } catch (err) {
-      console.error('Error searching tickets:', err);
-      setError('Error searching for tickets. Please try again.');
+      console.error('Error fetching tickets:', err);
+      setError('Error fetching your tickets. Please try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Function to handle ticket search by email
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    
+    if (!email.trim()) {
+      setError('Please enter an email address to search');
+      return;
+    }
+    
+    // Use the common ticket fetching function
+    fetchUserTickets(email);
   };
 
   // Format date for display
@@ -252,6 +288,12 @@ export default function MyTickets() {
               </div>
             )}
             
+            {loading && (
+              <div className="flex justify-center items-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-amber-500"></div>
+              </div>
+            )}
+            
             {searched && !loading && allTickets.length === 0 && paidTickets.length === 0 && freeTickets.length === 0 && (
               <div className="text-center py-8 bg-gray-50 rounded-lg">
                 <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -263,197 +305,302 @@ export default function MyTickets() {
             )}
           </div>
           
+          {/* Your Tickets Section */}
+          {user && (
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-black mb-4">Your Tickets</h2>
+              <p className="text-gray-600 mb-6">Here are all the tickets associated with your account.</p>
+            </div>
+          )}
+          
           {/* Search Results - General Tickets */}
           {searched && !loading && allTickets.length > 0 && (
-            <div className="mb-12 bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-6">General Tickets</h2>
-              <div className="overflow-x-auto">
-                <table className="min-w-full bg-white">
-                  <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black font-bold uppercase tracking-wider">Event</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black font-bold uppercase tracking-wider">Customer</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black font-bold uppercase tracking-wider">Ticket Type</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black font-bold uppercase tracking-wider">Price</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black font-bold uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black font-bold uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black font-bold uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
+            <div className="mb-12">
+              <h2 className="text-xl font-semibold text-gray-800 mb-6">All Tickets</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {allTickets.map((ticket) => (
-                      <tr key={ticket.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {ticket.event_title || `Event ID: ${ticket.event_id?.substring(0, 8)}...`}
+                  <div key={ticket.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                    {/* Ticket header with status */}
+                    <div className="p-4 bg-gradient-to-r from-gray-800 to-black text-white relative overflow-hidden">
+                      {/* Shine effect */}
+                      <div className="absolute inset-0 overflow-hidden">
+                        <div className="absolute -inset-[10px] opacity-20 bg-gradient-to-r from-transparent via-white to-transparent skew-x-[-45deg] animate-shine"></div>
+                      </div>
+                      
+                      <div className="flex justify-between items-start relative z-10">
+                        <h3 className="font-bold text-lg line-clamp-1">{ticket.event_title || `Event ID: ${ticket.event_id?.substring(0, 8)}...`}</h3>
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                          ticket.status === 'active' || ticket.status === 'completed' ? 'bg-green-500 text-white' : 
+                          ticket.status === 'pending' ? 'bg-yellow-400 text-gray-800' : 
+                          'bg-gray-200 text-gray-800'
+                        }`}>
+                          {ticket.status || 'unknown'}
+                        </span>
+                      </div>
+                      <p className="text-sm mt-1 text-gray-300 relative z-10">
+                        {ticket.event_date ? formatDate(ticket.event_date) : formatDate(ticket.purchase_date || ticket.created_at)}
+                      </p>
+                    </div>
+                    
+                    {/* Ticket details */}
+                    <div className="p-4">
+                      <div className="mb-4">
+                        <div className="flex items-center mb-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                          <span className="text-sm text-gray-600">{ticket.customer_email || ticket.email || 'N/A'}</span>
                           </div>
-                          <div className="text-xs text-gray-500">
-                            {ticket.event_date ? formatDate(ticket.event_date) : formatDate(ticket.purchase_date)}
+                        
+                        {ticket.event_location && (
+                          <div className="flex items-center mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span className="text-sm text-gray-600">{ticket.event_location}</span>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{ticket.customer_email || 'N/A'}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
-                            {ticket.ticket_type || 'General'}
+                        )}
+                        
+                        <div className="flex items-center mb-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                          </svg>
+                          <span className="text-sm font-medium px-3 py-1 rounded-full 
+                            bg-gradient-to-r 
+                            from-gray-50 to-gray-100 
+                            text-gray-700 
+                            border border-gray-200">
+                            {ticket.ticket_type || 'Standard Ticket'}
                           </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">₦{parseFloat(ticket.price_paid || 0).toLocaleString()}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(ticket.purchase_date || ticket.created_at).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            ticket.status === 'active' ? 'bg-green-100 text-green-800' : 
-                            ticket.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {ticket.status || 'unknown'}
+                        </div>
+                        
+                        {parseFloat(ticket.price_paid) > 0 && (
+                          <div className="flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-sm font-bold text-gray-800">₦{parseFloat(ticket.price_paid || 0).toLocaleString()}</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {ticket.ticket_code && (
+                        <div className="bg-gray-50 p-3 rounded-md mb-4">
+                          <p className="text-xs text-gray-500 mb-1">Ticket Code</p>
+                          <p className="text-sm font-mono font-medium text-gray-800">{ticket.ticket_code}</p>
+                        </div>
+                      )}
+                      
+                      <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
+                        <span className="text-xs text-gray-500">
+                          {new Date(ticket.purchase_date || ticket.created_at).toLocaleDateString()} at {new Date(ticket.purchase_date || ticket.created_at).toLocaleTimeString()}
                           </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <Link href={`/tickets/${ticket.reference}`} className="text-purple-600 hover:text-purple-900 font-bold">
-                            View
+                        <Link 
+                          href={`/tickets/${ticket.reference}`} 
+                          className="px-4 py-2 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors"
+                        >
+                          View Ticket
                           </Link>
-                        </td>
-                      </tr>
+                      </div>
+                    </div>
+                  </div>
                     ))}
-                  </tbody>
-                </table>
               </div>
             </div>
           )}
           
-          {/* Search Results - Paid Tickets */}
-          {searched && !loading && paidTickets.length > 0 && (
-            <div className="mb-12 bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-6">Paid Event Tickets</h2>
-              <div className="overflow-x-auto">
-                <table className="min-w-full bg-white">
-                  <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black font-bold uppercase tracking-wider">Event</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black font-bold uppercase tracking-wider">Customer</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black font-bold uppercase tracking-wider">Type</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black font-bold uppercase tracking-wider">Price</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black font-bold uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black font-bold uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black font-bold uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {paidTickets.map((ticket) => (
-                      <tr key={ticket.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {ticket.event_title || `Event ID: ${ticket.event_id?.substring(0, 8)}...`}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {ticket.event_date ? formatDate(ticket.event_date) : formatDate(ticket.purchase_date)}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{ticket.customer_name || 'N/A'}</div>
-                          <div className="text-xs text-gray-500">{ticket.customer_email || 'N/A'}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800">
-                            {ticket.ticket_type || 'Paid Ticket'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">₦{parseFloat(ticket.price_paid || 0).toLocaleString()}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(ticket.purchase_date).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            ticket.status === 'active' ? 'bg-green-100 text-green-800' : 
-                            ticket.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {ticket.status || 'unknown'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <Link href={`/tickets/${ticket.reference}`} className="text-amber-600 hover:text-amber-900 font-bold">
-                            View
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-          
-          {/* Search Results - Free Tickets */}
+          {/* Free Tickets */}
           {searched && !loading && freeTickets.length > 0 && (
-            <div className="mb-12 bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-6">Free Event Tickets</h2>
-              <div className="overflow-x-auto">
-                <table className="min-w-full bg-white">
-                  <thead>
-                    <tr className="bg-gray-50 border-b">
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black font-bold uppercase tracking-wider">Event</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black font-bold uppercase tracking-wider">Attendee</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black font-bold uppercase tracking-wider">Ticket Type</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black font-bold uppercase tracking-wider">Date & Time</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black font-bold uppercase tracking-wider">Location</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black font-bold uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-black font-bold uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {freeTickets.map((ticket) => (
-                      <tr key={ticket.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {ticket.event_title || 'Event'}
+            <div className="mb-12">
+              <h2 className="text-xl font-semibold text-gray-800 mb-6">Free Tickets</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {freeTickets.map((ticket) => (
+                  <div key={ticket.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                    {/* Ticket header */}
+                    <div className="p-4 bg-gradient-to-r from-gray-800 to-black text-white relative overflow-hidden">
+                      {/* Shine effect */}
+                      <div className="absolute inset-0 overflow-hidden">
+                        <div className="absolute -inset-[10px] opacity-20 bg-gradient-to-r from-transparent via-white to-transparent skew-x-[-45deg] animate-shine"></div>
+                      </div>
+                      
+                      <div className="flex justify-between items-start relative z-10">
+                        <h3 className="font-bold text-lg line-clamp-1">{ticket.event_title || `Event ID: ${ticket.event_id?.substring(0, 8)}...`}</h3>
+                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-white text-gray-800">Free</span>
+                      </div>
+                      <p className="text-sm mt-1 text-gray-300 relative z-10">
+                        {formatDate(ticket.event_date || ticket.created_at)}
+                      </p>
+                    </div>
+                    
+                    {/* Ticket details */}
+                    <div className="p-4">
+                      <div className="mb-4">
+                        <div className="flex items-center mb-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                          <span className="text-sm text-gray-600">{ticket.customer_name || 'N/A'}</span>
+                        </div>
+                        
+                        <div className="flex items-center mb-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                          <span className="text-sm text-gray-600">{ticket.customer_email}</span>
                           </div>
-                          <div className="text-xs text-gray-500">
-                            {formatDate(ticket.event_date)}
+                        
+                        {ticket.event_location && (
+                          <div className="flex items-center mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span className="text-sm text-gray-600">{ticket.event_location}</span>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{ticket.customer_name || 'N/A'}</div>
-                          <div className="text-xs text-gray-500">{ticket.customer_email || 'N/A'}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                        )}
+                        
+                        <div className="flex items-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                          </svg>
+                          <span className="text-sm font-medium px-3 py-1 rounded-full 
+                            bg-gradient-to-r 
+                            from-gray-50 to-gray-100 
+                            text-gray-700 
+                            border border-gray-200">
                             {ticket.ticket_type || 'Free Ticket'}
                           </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{formatDate(ticket.event_date)}</div>
-                          <div className="text-xs text-gray-500">{ticket.event_time || 'Time not specified'}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {ticket.event_location || 'Location not specified'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        </div>
+                      </div>
+                      
+                      <div className="bg-gray-50 p-3 rounded-md mb-4">
+                        <div className="flex items-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <div>
+                            <p className="text-xs text-gray-500">Event Time</p>
+                            <p className="text-sm font-medium text-gray-800">{ticket.event_time || 'Time not specified'}</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
                             ticket.status === 'active' ? 'bg-green-100 text-green-800' : 
+                            ticket.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                          {ticket.status || 'active'}
+                          </span>
+                        <Link 
+                          href={`/tickets/${ticket.reference}`} 
+                          className="px-4 py-2 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors"
+                        >
+                          View Ticket
+                          </Link>
+                      </div>
+                    </div>
+                  </div>
+                    ))}
+              </div>
+            </div>
+          )}
+          
+          {/* Paid Tickets */}
+          {searched && !loading && paidTickets.length > 0 && (
+            <div className="mb-12">
+              <h2 className="text-xl font-semibold text-gray-800 mb-6">Paid Tickets</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {paidTickets.map((ticket) => (
+                  <div key={ticket.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                    {/* Ticket header */}
+                    <div className="p-4 bg-gradient-to-r from-gray-800 to-black text-white relative overflow-hidden">
+                      {/* Shine effect */}
+                      <div className="absolute inset-0 overflow-hidden">
+                        <div className="absolute -inset-[10px] opacity-20 bg-gradient-to-r from-transparent via-white to-transparent skew-x-[-45deg] animate-shine"></div>
+                      </div>
+                      
+                      <div className="flex justify-between items-start relative z-10">
+                        <h3 className="font-bold text-lg line-clamp-1">{ticket.event_title || `Event ID: ${ticket.event_id?.substring(0, 8)}...`}</h3>
+                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-white text-gray-800">
+                          ₦{parseFloat(ticket.price_paid || 0).toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="text-sm mt-1 text-gray-300 relative z-10">
+                        {formatDate(ticket.event_date || ticket.purchase_date || ticket.created_at)}
+                      </p>
+                    </div>
+                    
+                    {/* Ticket details */}
+                    <div className="p-4">
+                      <div className="mb-4">
+                        <div className="flex items-center mb-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                          <span className="text-sm text-gray-600">{ticket.customer_email}</span>
+                          </div>
+                        
+                        {ticket.event_location && (
+                          <div className="flex items-center mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span className="text-sm text-gray-600">{ticket.event_location}</span>
+                          </div>
+                        )}
+                        
+                        <div className="flex items-center mb-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                          </svg>
+                          <span className="text-sm font-medium px-3 py-1 rounded-full 
+                            bg-gradient-to-r 
+                            from-gray-50 to-gray-100 
+                            text-gray-700 
+                            border border-gray-200">
+                            {ticket.ticket_type || 'Premium Ticket'}
+                          </span>
+                        </div>
+                        
+                        {ticket.transaction_id && (
+                          <div className="flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                            <span className="text-xs text-gray-500">Transaction: {ticket.transaction_id}</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {ticket.ticket_code && (
+                        <div className="bg-gray-50 p-3 rounded-md mb-4">
+                          <p className="text-xs text-gray-500 mb-1">Ticket Code</p>
+                          <p className="text-sm font-mono font-medium text-gray-800">{ticket.ticket_code}</p>
+                        </div>
+                      )}
+                      
+                      <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                          ticket.status === 'active' || ticket.status === 'completed' ? 'bg-green-100 text-green-800' : 
                             ticket.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
                             'bg-gray-100 text-gray-800'
                           }`}>
                             {ticket.status || 'unknown'}
                           </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <Link href={`/tickets/${ticket.reference}`} className="text-blue-600 hover:text-blue-900 font-bold">
-                            View
+                        <Link 
+                          href={`/tickets/${ticket.reference}`} 
+                          className="px-4 py-2 bg-black text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors"
+                        >
+                          View Ticket
                           </Link>
-                        </td>
-                      </tr>
+                      </div>
+                    </div>
+                  </div>
                     ))}
-                  </tbody>
-                </table>
               </div>
             </div>
           )}

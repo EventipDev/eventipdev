@@ -12,6 +12,7 @@ function CreateEventContent() {
   const [eventName, setEventName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
+  const [customCategory, setCustomCategory] = useState('');
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
@@ -23,6 +24,7 @@ function CreateEventContent() {
   const [isPaid, setIsPaid] = useState(false);
   const [price, setPrice] = useState('');
   const [quantity, setQuantity] = useState('');
+  const [ticketTitle, setTicketTitle] = useState('Standard Ticket');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [coverImage, setCoverImage] = useState(null);
@@ -1908,7 +1910,7 @@ function CreateEventContent() {
         user_id: user.id,
         name: eventName,
         description: description,
-        category: category,
+        category: category === 'other' ? customCategory : category,
         address: address,
         city: city,
         state: state,
@@ -1972,7 +1974,7 @@ function CreateEventContent() {
         try {
           const ticketTierData = {
             event_id: eventResult.id,
-            name: 'Standard Ticket',
+            name: ticketTitle || 'Standard Ticket',
             description: 'Standard entry ticket',
             price: parseFloat(price) || 0,
             quantity: parseInt(quantity) || 0,
@@ -2042,7 +2044,7 @@ function CreateEventContent() {
         try {
           const freeTicketTierData = {
             event_id: eventResult.id,
-            name: 'Free Ticket',
+            name: ticketTitle || 'Free Ticket',
             description: 'Free entry ticket',
             price: 0,
             quantity: parseInt(quantity) || 0,
@@ -2438,6 +2440,7 @@ function CreateEventContent() {
                         <option value="food">Food & Drink</option>
                         <option value="business">Business</option>
                         <option value="training">Training</option>
+                        <option value="other">Other</option>
                       </select>
                       <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                         <svg className="h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -2445,6 +2448,24 @@ function CreateEventContent() {
                         </svg>
                       </div>
                     </div>
+                    
+                    {/* Show custom category input when "other" is selected */}
+                    {category === 'other' && (
+                      <div className="mt-3">
+                        <label htmlFor="customCategory" className="block text-sm font-medium text-slate-700 mb-1">
+                          Specify Category
+                        </label>
+                        <input
+                          type="text"
+                          id="customCategory"
+                          value={customCategory}
+                          onChange={(e) => setCustomCategory(e.target.value)}
+                          placeholder="Enter your category"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          required={category === 'other'}
+                        />
+                      </div>
+                    )}
                   </div>
                   
                   <div>
@@ -3022,36 +3043,52 @@ function CreateEventContent() {
                     
                     {/* Quantity and Price for Standard Ticket */}
                     {isPaid && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                      <div className="grid grid-cols-1 gap-4 mb-6">
                         <div>
-                          <label htmlFor="quantity" className="block text-sm font-medium text-slate-700 mb-1">
-                            Quantity
+                          <label htmlFor="ticketTitle" className="block text-sm font-medium text-slate-700 mb-1">
+                            Ticket Title
                           </label>
                           <input
-                            type="number"
-                            id="quantity"
-                            value={quantity}
-                            onChange={(e) => setQuantity(e.target.value)}
-                            placeholder="200"
-                            min="1"
+                            type="text"
+                            id="ticketTitle"
+                            value={ticketTitle}
+                            onChange={(e) => setTicketTitle(e.target.value)}
+                            placeholder="Standard Ticket"
                             className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
                           />
                         </div>
                         
-                        <div>
-                          <label htmlFor="price" className="block text-sm font-medium text-slate-700 mb-1">
-                            Price ₦
-                          </label>
-                          <input
-                            type="number"
-                            id="price"
-                            value={price}
-                            onChange={(e) => setPrice(e.target.value)}
-                            placeholder="5000"
-                            min="0"
-                            step="0.01"
-                            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                          />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label htmlFor="quantity" className="block text-sm font-medium text-slate-700 mb-1">
+                              Quantity
+                            </label>
+                            <input
+                              type="number"
+                              id="quantity"
+                              value={quantity}
+                              onChange={(e) => setQuantity(e.target.value)}
+                              placeholder="200"
+                              min="1"
+                              className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label htmlFor="price" className="block text-sm font-medium text-slate-700 mb-1">
+                              Price ₦
+                            </label>
+                            <input
+                              type="number"
+                              id="price"
+                              value={price}
+                              onChange={(e) => setPrice(e.target.value)}
+                              placeholder="5000"
+                              min="0"
+                              step="0.01"
+                              className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </div>
                         </div>
                       </div>
                     )}

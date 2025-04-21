@@ -6,18 +6,22 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "install-news-deps": "node src/scripts/install-dependencies.js"
   },
   "dependencies": {
     "@paystack/inline-js": "^2.22.2",
     "@react-google-maps/api": "^2.20.6",
     "@supabase/supabase-js": "^2.49.1",
     "framer-motion": "^12.5.0",
+    "html2canvas": "^1.4.1",
     "lucide-react": "^0.483.0",
     "next": "15.2.2",
     "qrcode.react": "^4.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-icons": "^5.5.0",
+    "react-quill": "^2.0.0",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

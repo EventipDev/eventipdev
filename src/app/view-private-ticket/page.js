@@ -67,6 +67,143 @@ function ClientQRCode({ value }) {
   );
 }
 
+// Enhance the DownloadTicket function for better mobile support
+function DownloadQRCode({ ticket }) {
+  const [downloading, setDownloading] = useState(false);
+  const [downloadFormat, setDownloadFormat] = useState('png'); // Default format
+
+  const handleDownload = async () => {
+    try {
+      setDownloading(true);
+      console.log('Using QR code download mode');
+
+      // Get just the QR code element
+      const qrCodeElement = document.querySelector('.bg-white.p-2.rounded-lg.inline-block.mb-3');
+      
+      if (!qrCodeElement) {
+        throw new Error('QR code element not found');
+      }
+
+      // Create a canvas element to render just the QR code
+      const html2canvas = (await import('html2canvas')).default;
+      
+      const canvas = await html2canvas(qrCodeElement, {
+        scale: 2,
+        logging: false,
+        backgroundColor: '#ffffff',
+        useCORS: true
+      });
+      
+      // Convert canvas to a data URL
+      const mimeType = downloadFormat === 'png' ? 'image/png' : 'image/jpeg';
+      const imageData = canvas.toDataURL(mimeType, 1.0);
+      
+      // Save the image
+      const fileExt = downloadFormat === 'png' ? 'png' : 'jpg';
+      const link = document.createElement('a');
+      link.href = imageData;
+      link.download = `ticket-qr-${ticket.ticket_code}.${fileExt}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+    } catch (error) {
+      console.error('Error downloading QR code:', error);
+      alert('Could not download QR code. Please take a screenshot instead.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col">
+      <div className="flex mb-2 gap-2 justify-center">
+        <button
+          type="button"
+          onClick={() => setDownloadFormat('png')}
+          className={`px-3 py-1 text-xs rounded ${downloadFormat === 'png' ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-100 text-gray-600'}`}
+        >
+          PNG
+        </button>
+        <button
+          type="button"
+          onClick={() => setDownloadFormat('jpeg')}
+          className={`px-3 py-1 text-xs rounded ${downloadFormat === 'jpeg' ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-100 text-gray-600'}`}
+        >
+          JPEG
+        </button>
+      </div>
+      
+      <button
+        type="button"
+        onClick={handleDownload}
+        disabled={downloading}
+        className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center"
+      >
+        {downloading ? (
+          <>
+            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Downloading...
+          </>
+        ) : (
+          <>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Download QR Code
+          </>
+        )}
+      </button>
+      
+      <p className="text-xs text-gray-500 mt-1 text-center">
+        The QR code contains all your ticket information.
+      </p>
+    </div>
+  );
+}
+
+// Make print button more mobile friendly
+function PrintTicket() {
+  const [isPrinting, setIsPrinting] = useState(false);
+  
+  const handlePrint = () => {
+    setIsPrinting(true);
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => setIsPrinting(false), 1000);
+    }, 300);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handlePrint}
+      disabled={isPrinting}
+      className="w-full mt-3 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center"
+    >
+      {isPrinting ? (
+        <>
+          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Preparing to print...
+        </>
+      ) : (
+        <>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+          </svg>
+          Print Ticket
+        </>
+      )}
+    </button>
+  );
+}
+
 // Content component that uses searchParams
 function TicketContent() {
   const searchParams = useSearchParams();
@@ -172,6 +309,51 @@ CONTACT EMAIL: ${ticket.customer_email || ticket.buyer_email}
 VERIFICATION: ${ticket.id.substring(0, 6).toUpperCase()}`;
   };
 
+  // Add CSS styles for print media
+  useEffect(() => {
+    // Add print styles
+    const style = document.createElement('style');
+    style.innerHTML = `
+      @media print {
+        body * {
+          visibility: hidden;
+        }
+        #downloadable-ticket, #downloadable-ticket * {
+          visibility: visible;
+        }
+        #downloadable-ticket {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          border: none !important;
+          box-shadow: none !important;
+        }
+        .no-print, .event-image, .event-image * {
+          display: none !important;
+        }
+        /* Improve layout for print */
+        #downloadable-ticket .bg-gradient-to-r {
+          background: #4f46e5 !important;
+          background-image: none !important;
+          color: white !important;
+        }
+        /* Ensure QR code is clearly visible */
+        .bg-white.p-2.rounded-lg.inline-block.mb-3 {
+          display: block !important;
+          margin: 0 auto !important;
+          padding: 8px !important;
+          background-color: white !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -221,7 +403,7 @@ VERIFICATION: ${ticket.id.substring(0, 6).toUpperCase()}`;
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
       {/* Modern Navigation Bar */}
-      <header className="bg-white shadow-sm sticky top-0 z-10">
+      <header className="bg-white shadow-sm sticky top-0 z-10 no-print">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <Link href="/" className="text-indigo-600 hover:text-indigo-800 font-medium flex items-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
@@ -240,9 +422,16 @@ VERIFICATION: ${ticket.id.substring(0, 6).toUpperCase()}`;
       
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-3xl mx-auto">
-          <div className="bg-white border border-slate-200 rounded-xl shadow-md overflow-hidden mb-8">
+          {/* Enhanced Ticket Card with decorative elements */}
+          <div id="downloadable-ticket" className="bg-white border border-slate-200 rounded-xl shadow-md overflow-hidden mb-8 relative">
+            {/* Decorative corner cuts for a ticket-like appearance */}
+            <div className="absolute top-0 left-0 h-6 w-6 bg-slate-50 transform rotate-45 translate-x-[-50%] translate-y-[-50%]"></div>
+            <div className="absolute top-0 right-0 h-6 w-6 bg-slate-50 transform rotate-45 translate-x-[50%] translate-y-[-50%]"></div>
+            <div className="absolute bottom-0 left-0 h-6 w-6 bg-slate-50 transform rotate-45 translate-x-[-50%] translate-y-[50%]"></div>
+            <div className="absolute bottom-0 right-0 h-6 w-6 bg-slate-50 transform rotate-45 translate-x-[50%] translate-y-[50%]"></div>
+            
             {/* Ticket Header */}
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white relative">
               <div className="flex justify-between items-center">
                 <div>
                   <h1 className="text-2xl font-bold">{eventData.event_name}</h1>
@@ -251,6 +440,17 @@ VERIFICATION: ${ticket.id.substring(0, 6).toUpperCase()}`;
                 <div className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
                   {ticket.is_paid ? 'Paid Ticket' : 'Free Ticket'}
                 </div>
+              </div>
+              {/* Add a subtle pattern overlay for decoration */}
+              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRjMC0yLjIwOS0xLjc5MS00LTQtNHMtNCAxLjc5MS00IDQgMS43OTEgNCA0IDQgNC0xLjc5MSA0LTR6bTAgMHoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-10 mix-blend-overlay pointer-events-none"></div>
+            </div>
+            
+            {/* Add a ticket validation mark */}
+            <div className="absolute top-4 right-4 z-10 no-print">
+              <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center border-2 border-green-200 shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
               </div>
             </div>
             
@@ -261,7 +461,7 @@ VERIFICATION: ${ticket.id.substring(0, 6).toUpperCase()}`;
                 <div className="md:col-span-2 space-y-6">
                   {/* Event Cover Image */}
                   {eventData.cover_image_url && (
-                    <div className="rounded-lg overflow-hidden">
+                    <div className="rounded-lg overflow-hidden event-image">
                       <Image
                         src={eventData.cover_image_url}
                         alt={eventData.event_name}
@@ -423,6 +623,32 @@ VERIFICATION: ${ticket.id.substring(0, 6).toUpperCase()}`;
                 </div>
               </div>
             </div>
+          </div>
+          
+          {/* Instruction note */}
+          <div className="text-center text-sm text-gray-600 mb-4 p-3 bg-gray-50 rounded-lg">
+            <div className="font-medium mb-1">📱 Your Ticket is Ready!</div>
+            <p className="mb-2">Download or print this ticket and present the QR code at the event entrance for validation.</p>
+            <ul className="text-xs text-left space-y-1 max-w-xs mx-auto">
+              <li className="flex items-start">
+                <span className="text-indigo-500 font-bold mr-1">•</span> 
+                <span>Mobile: Save to your photos and show when you arrive</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-indigo-500 font-bold mr-1">•</span> 
+                <span>Desktop: Print or save to your device for later</span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-indigo-500 font-bold mr-1">•</span> 
+                <span>The QR code contains your unique ticket information</span>
+              </li>
+            </ul>
+          </div>
+          
+          {/* Download and Print Ticket Buttons */}
+          <div className="max-w-xs mx-auto no-print">
+            <DownloadQRCode ticket={ticket} />
+            <PrintTicket />
           </div>
         </div>
       </main>

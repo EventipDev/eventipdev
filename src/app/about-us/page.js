@@ -382,6 +382,128 @@ export default function AboutUs() {
                     </div>
                   </motion.div>
                 ))}
+                
+                {/* Future Timeline Items */}
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.6 }}
+                  className="relative flex items-center flex-row"
+                >
+                  <div className="w-1/2"></div>
+                  <div className="absolute left-1/2 transform -translate-x-1/2 w-12 h-12 rounded-full bg-white/90 text-amber-600 flex items-center justify-center text-2xl z-10">
+                    🚀
+                  </div>
+                  <div className="w-1/2 pl-12">
+                    <div className="bg-white/10 backdrop-blur-sm p-6 rounded-xl">
+                      <div className="text-sm font-bold text-amber-200 mb-2">2025</div>
+                      <h3 className="text-xl font-bold mb-3">Year of Emergence</h3>
+                      <ul className="space-y-2 text-amber-100">
+                        <li>• Event IP Tech Rave Launch</li>
+                        <li>• Mobile App Release (Beta)</li>
+                        <li>• Brand Partnerships & Sponsorships</li>
+                        <li>• First 10,000 Users milestone</li>
+                      </ul>
+                    </div>
+                  </div>
+                </motion.div>
+                
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.7 }}
+                  className="relative flex items-center flex-row-reverse"
+                >
+                  <div className="w-1/2"></div>
+                  <div className="absolute left-1/2 transform -translate-x-1/2 w-12 h-12 rounded-full bg-white/90 text-amber-600 flex items-center justify-center text-2xl z-10">
+                    🔧
+                  </div>
+                  <div className="w-1/2 pr-12">
+                    <div className="bg-white/10 backdrop-blur-sm p-6 rounded-xl">
+                      <div className="text-sm font-bold text-amber-200 mb-2">2026</div>
+                      <h3 className="text-xl font-bold mb-3">Scaling Innovation</h3>
+                      <ul className="space-y-2 text-amber-100">
+                        <li>• Event IP Studio Series</li>
+                        <li>• Monetization for Hosts</li>
+                        <li>• Expansion to West Africa</li>
+                      </ul>
+                    </div>
+                  </div>
+                </motion.div>
+                
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.8 }}
+                  className="relative flex items-center flex-row"
+                >
+                  <div className="w-1/2"></div>
+                  <div className="absolute left-1/2 transform -translate-x-1/2 w-12 h-12 rounded-full bg-white/90 text-amber-600 flex items-center justify-center text-2xl z-10">
+                    👥
+                  </div>
+                  <div className="w-1/2 pl-12">
+                    <div className="bg-white/10 backdrop-blur-sm p-6 rounded-xl">
+                      <div className="text-sm font-bold text-amber-200 mb-2">2027</div>
+                      <h3 className="text-xl font-bold mb-3">Building Community</h3>
+                      <ul className="space-y-2 text-amber-100">
+                        <li>• Launch of Event IP Creators Fund</li>
+                        <li>• AI-Powered Personalization Engine</li>
+                        <li>• 100,000 User milestone</li>
+                      </ul>
+                    </div>
+                  </div>
+                </motion.div>
+                
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.9 }}
+                  className="relative flex items-center flex-row-reverse"
+                >
+                  <div className="w-1/2"></div>
+                  <div className="absolute left-1/2 transform -translate-x-1/2 w-12 h-12 rounded-full bg-white/90 text-amber-600 flex items-center justify-center text-2xl z-10">
+                    🌐
+                  </div>
+                  <div className="w-1/2 pr-12">
+                    <div className="bg-white/10 backdrop-blur-sm p-6 rounded-xl">
+                      <div className="text-sm font-bold text-amber-200 mb-2">2028</div>
+                      <h3 className="text-xl font-bold mb-3">Global Footprint</h3>
+                      <ul className="space-y-2 text-amber-100">
+                        <li>• Event IP Global Series</li>
+                        <li>• In-App Marketplace</li>
+                        <li>• Strategic Acquisition/Investment Round</li>
+                      </ul>
+                    </div>
+                  </div>
+                </motion.div>
+                
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 1.0 }}
+                  className="relative flex items-center flex-row"
+                >
+                  <div className="w-1/2"></div>
+                  <div className="absolute left-1/2 transform -translate-x-1/2 w-12 h-12 rounded-full bg-white/90 text-amber-600 flex items-center justify-center text-2xl z-10">
+                    🔮
+                  </div>
+                  <div className="w-1/2 pl-12">
+                    <div className="bg-white/10 backdrop-blur-sm p-6 rounded-xl">
+                      <div className="text-sm font-bold text-amber-200 mb-2">2029+</div>
+                      <h3 className="text-xl font-bold mb-3">Redefining Experiences</h3>
+                      <ul className="space-y-2 text-amber-100">
+                        <li>• Mixed Reality Events</li>
+                        <li>• Event IP Academy</li>
+                        <li>• Sustainable Events Initiative</li>
+                      </ul>
+                    </div>
+                  </div>
+                </motion.div>
               </div>
             </div>
           </div>

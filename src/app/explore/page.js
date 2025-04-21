@@ -7,6 +7,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { supabase } from '../../lib/supabaseClient';
 import TicketModal from '../../components/TicketModal';
+import { useRouter } from 'next/navigation';
 
 export default function ExplorePage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -19,10 +20,16 @@ export default function ExplorePage() {
   const [sortBy, setSortBy] = useState('date');
   const [priceFilter, setPriceFilter] = useState({ free: false, paid: false });
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [eventsPerPage] = useState(9);
+  
   // Preview modal states
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const router = useRouter();
 
   const fetchEvents = useCallback(async () => {
     try {
@@ -336,6 +343,17 @@ export default function ExplorePage() {
       e.stopPropagation(); // Stop event bubbling
     }
     
+    // Check if user is logged in by looking for user data in localStorage
+    const isLoggedIn = typeof window !== 'undefined' && localStorage.getItem('user');
+    
+    if (!isLoggedIn) {
+      // Show login prompt if user is not logged in
+      setSelectedEvent(event);
+      setShowLoginPrompt(true);
+      return;
+    }
+    
+    // Continue with existing ticket purchase flow for logged in users
     // Format the event data specifically for the TicketModal component
     const formattedEvent = {
       ...event,
@@ -404,6 +422,50 @@ export default function ExplorePage() {
   const closeTicketModal = () => {
     setShowTicketModal(false);
   };
+
+  // Function to direct users to login page
+  const handleLoginRedirect = () => {
+    // Store the current URL in localStorage to redirect back after login
+    localStorage.setItem('loginRedirectURL', window.location.href);
+    router.push('/signin');
+  };
+
+  // Function to close the login prompt
+  const closeLoginPrompt = () => {
+    setShowLoginPrompt(false);
+  };
+
+  // Calculate pagination values
+  const indexOfLastEvent = currentPage * eventsPerPage;
+  const indexOfFirstEvent = indexOfLastEvent - eventsPerPage;
+  const currentEvents = filteredEvents.slice(indexOfFirstEvent, indexOfLastEvent);
+  const totalPages = Math.ceil(filteredEvents.length / eventsPerPage);
+
+  // Change page
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+  // Go to next page
+  const nextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+      // Scroll to top of results
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Go to previous page
+  const prevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+      // Scroll to top of results
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, location, selectedCategory, priceFilter, sortBy]);
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-amber-50">
@@ -609,6 +671,11 @@ export default function ExplorePage() {
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                     <div className="text-gray-700">
                       <span className="font-semibold text-amber-600">{filteredEvents.length}</span> events found
+                      {filteredEvents.length > eventsPerPage && (
+                        <span className="ml-2 text-gray-500">
+                          (showing {indexOfFirstEvent + 1}-{Math.min(indexOfLastEvent, filteredEvents.length)} of {filteredEvents.length})
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-500">Sort by:</span>
@@ -645,24 +712,94 @@ export default function ExplorePage() {
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-                    {filteredEvents.map((event) => (
-                      <div key={event.id} className="flex-1 min-w-0">
-                        <EventCard 
-                          id={event.id}
-                          title={event.title}
-                          image={event.image}
-                          date={event.date}
-                          location={event.location}
-                          price={event.price}
-                          ticketCount={event.ticketCount}
-                          onClick={() => handleEventClick(event)}
-                          onGetTickets={() => handleGetTickets(event)}
-                          event={event}
-                        />
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                      {currentEvents.map((event) => (
+                        <div key={event.id} className="flex-1 min-w-0">
+                          <EventCard 
+                            id={event.id}
+                            title={event.title}
+                            image={event.image}
+                            date={event.date}
+                            location={event.location}
+                            price={event.price}
+                            ticketCount={event.ticketCount}
+                            onClick={() => handleEventClick(event)}
+                            onGetTickets={() => handleGetTickets(event)}
+                            event={event}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Pagination */}
+                    {filteredEvents.length > eventsPerPage && (
+                      <div className="flex justify-center mb-12">
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={prevPage}
+                            disabled={currentPage === 1}
+                            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${
+                              currentPage === 1 
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                                : 'bg-white text-gray-700 hover:bg-amber-100 border border-gray-200'
+                            }`}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
+                          </button>
+                          
+                          {Array.from({ length: totalPages }, (_, i) => {
+                            // Show a limited number of page buttons for better UX
+                            if (
+                              i === 0 || // First page
+                              i === totalPages - 1 || // Last page
+                              (i >= currentPage - 2 && i <= currentPage + 2) // Pages around current
+                            ) {
+                              return (
+                                <button
+                                  key={i}
+                                  onClick={() => paginate(i + 1)}
+                                  className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${
+                                    currentPage === i + 1
+                                      ? 'bg-amber-500 text-white'
+                                      : 'bg-white text-gray-700 hover:bg-amber-100 border border-gray-200'
+                                  }`}
+                                >
+                                  {i + 1}
+                                </button>
+                              );
+                            }
+                            
+                            // Add ellipsis where pages are skipped
+                            if (i === 1 && currentPage > 4) {
+                              return <span key="ellipsis-start" className="px-1">...</span>;
+                            }
+                            if (i === totalPages - 2 && currentPage < totalPages - 3) {
+                              return <span key="ellipsis-end" className="px-1">...</span>;
+                            }
+                            
+                            return null;
+                          })}
+                          
+                          <button 
+                            onClick={nextPage}
+                            disabled={currentPage === totalPages}
+                            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${
+                              currentPage === totalPages 
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                                : 'bg-white text-gray-700 hover:bg-amber-100 border border-gray-200'
+                            }`}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </button>
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 )}
 
                 {/* Trending Events Section */}
@@ -933,6 +1070,49 @@ export default function ExplorePage() {
         onClose={closeTicketModal}
       />
 
+      {/* Login Prompt Modal */}
+      {showLoginPrompt && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            {/* Modal backdrop */}
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-gray-800 opacity-80"></div>
+            </div>
+            
+            {/* Modal content */}
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+              <div className="bg-white px-6 py-6">
+                <div className="text-center mb-4">
+                  <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-amber-100 mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Login Required</h3>
+                  <p className="text-gray-600 mb-6">
+                    You need to be logged in to purchase tickets for this event. Would you like to login now?
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 sm:justify-center">
+                  <button
+                    onClick={closeLoginPrompt}
+                    className="w-full sm:w-auto order-2 sm:order-1 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleLoginRedirect}
+                    className="w-full sm:w-auto order-1 sm:order-2 px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700"
+                  >
+                    Login Now
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Footer />
     </div>
   );
@@ -943,6 +1123,8 @@ function EventCard({ id, title, image, date, location, price, ticketCount, onCli
   const isSoldOut = ticketCount === 'No available ticket for this event';
   const hasDiscounts = event?.hasDiscounts;
   const discountAmount = event?.discountAmount || 0;
+  // Check if user is logged in
+  const isLoggedIn = typeof window !== 'undefined' && localStorage.getItem('user');
   
   return (
     <div onClick={onClick} className="group bg-white border border-gray-100 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer">
@@ -1016,15 +1198,20 @@ function EventCard({ id, title, image, date, location, price, ticketCount, onCli
               onGetTickets(e);
             }}
             disabled={isSoldOut}
-            className={`w-8 h-8 flex items-center justify-center transition-colors ${
+            className={`relative w-8 h-8 flex items-center justify-center transition-colors ${
               isSoldOut 
                 ? 'bg-gray-100 cursor-not-allowed' 
                 : 'bg-black text-white hover:bg-gray-800'
             }`}
+            title={isLoggedIn ? "Get tickets" : "Login required to get tickets"}
           >
             {isSoldOut ? (
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : !isLoggedIn ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H9m3-12a9 9 0 00-9 9c0 1.11.15 2.18.44 3.21.29 1.03 1.24 1.77 2.32 1.79h13.48c1.08-.02 2.03-.76 2.32-1.79.29-1.03.44-2.1.44-3.21a9 9 0 00-9-9z" />
               </svg>
             ) : (
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1043,6 +1230,8 @@ function TrendingEventCard({ id, title, image, date, location, price, category =
   const isSoldOut = ticketCount === 'No available ticket for this event';
   const hasDiscounts = event?.hasDiscounts;
   const discountAmount = event?.discountAmount || 0;
+  // Check if user is logged in
+  const isLoggedIn = typeof window !== 'undefined' && localStorage.getItem('user');
   
   return (
     <div onClick={onClick} className="group flex flex-col md:flex-row bg-white border border-gray-100 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer">
@@ -1133,16 +1322,22 @@ function TrendingEventCard({ id, title, image, date, location, price, category =
               onGetTickets(e);
             }}
             disabled={isSoldOut}
-            className={`px-5 py-2 text-sm font-medium transition-colors ${
+            className={`px-5 py-2 text-sm font-medium transition-colors flex items-center ${
               isSoldOut 
                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
                 : 'bg-black text-white hover:bg-gray-800'
             }`}
+            title={isLoggedIn ? "Get tickets" : "Login required to get tickets"}
           >
-            {isSoldOut ? 'Sold Out' : 'Get Tickets'}
-            {!isSoldOut && (
+            {isSoldOut ? 'Sold Out' : isLoggedIn ? 'Get Tickets' : 'Login to Buy'}
+            {!isSoldOut && isLoggedIn && (
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1.5 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            )}
+            {!isSoldOut && !isLoggedIn && (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1.5 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
               </svg>
             )}
           </button>

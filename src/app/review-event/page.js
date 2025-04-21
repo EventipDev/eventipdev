@@ -319,7 +319,7 @@ function ReviewEventContent() {
                     
                     <div className="mb-2">
                       <span className="text-indigo-600 font-medium">₦{event?.ticket_price || 0}</span>
-                      <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">Standard Ticket</span>
+                      <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">{standardTicket?.name || 'Standard Ticket'}</span>
                     </div>
                     
                     <h3 className="text-lg font-semibold text-slate-800 mb-2">{event?.name}</h3>
@@ -483,15 +483,15 @@ function ReviewEventContent() {
                   {event?.is_paid && standardTicket && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div>
-                        <h3 className="text-sm font-medium text-slate-700">Standard Ticket Price</h3>
+                        <h3 className="text-sm font-medium text-slate-700">{standardTicket?.name || 'Standard Ticket'} Price</h3>
                         <p className="text-sm flex items-center mt-1">
                           <span className="font-semibold text-lg text-slate-800">₦{standardTicket?.price || '0'}</span>
-                          <span className="ml-2 px-2.5 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">Standard</span>
+                          <span className="ml-2 px-2.5 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">{standardTicket?.name || 'Standard'}</span>
                         </p>
                       </div>
                       
                       <div>
-                        <h3 className="text-sm font-medium text-slate-700">Standard Ticket Quantity</h3>
+                        <h3 className="text-sm font-medium text-slate-700">{standardTicket?.name || 'Standard Ticket'} Quantity</h3>
                         <p className="text-sm flex items-center mt-1">
                           <span className="font-semibold text-lg text-slate-800">{standardTicket?.quantity || '0'}</span>
                           <span className="ml-2 text-xs text-slate-500">tickets</span>
@@ -541,7 +541,7 @@ function ReviewEventContent() {
                   {/* Free tickets display */}
                   {!event?.is_paid && standardTicket && (
                     <div>
-                      <h3 className="text-sm font-medium text-slate-700">Free Tickets Available</h3>
+                      <h3 className="text-sm font-medium text-slate-700">{standardTicket?.name || 'Free Tickets'} Available</h3>
                       <p className="text-sm flex items-center mt-1">
                         <span className="font-semibold text-lg text-slate-800">{standardTicket?.quantity || '0'}</span>
                         <span className="ml-2 text-xs text-slate-500">tickets</span>

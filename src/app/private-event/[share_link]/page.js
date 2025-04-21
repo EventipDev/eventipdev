@@ -500,10 +500,10 @@ export default function SharedPrivateEventPage() {
                 <h2 className="text-xl font-semibold text-slate-800 mb-4">Organizer</h2>
                 <div className="flex items-center">
                   <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xl">
-                    {event.event_name ? event.event_name.charAt(0).toUpperCase() : 'E'}
+                    {event.organizer ? event.organizer.charAt(0).toUpperCase() : (event.event_name ? event.event_name.charAt(0).toUpperCase() : 'E')}
                   </div>
                   <div className="ml-4">
-                    <p className="font-medium text-slate-800">Event Host</p>
+                    <p className="font-medium text-slate-800">{event.organizer || 'Event Host'}</p>
                     <p className="text-sm text-slate-500">Private event organizer</p>
                   </div>
                 </div>
@@ -824,7 +824,7 @@ export default function SharedPrivateEventPage() {
       <footer className="bg-white border-t border-slate-200 mt-12 py-8">
         <div className="container mx-auto px-4">
           <div className="text-center text-slate-500 text-sm">
-            <p>© {new Date().getFullYear()} Eventips. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} Event IP. All rights reserved.</p>
             <p className="mt-1">This is a private event page. Please respect the privacy of the event.</p>
           </div>
         </div>
